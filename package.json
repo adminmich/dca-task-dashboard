@@ -1,0 +1,10 @@
+{
+  "name": "dca-task-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DCA Task Dashboard — pending task tracker (static site)",
+  "scripts": {
+    "dev": "npx serve public",
+    "deploy": "npx vercel --prod"
+  }
+}
