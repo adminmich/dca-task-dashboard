@@ -147,6 +147,44 @@
 
 </main>
 
+<!-- EDIT MODAL -->
+<div id="editModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl w-full max-w-lg p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-bold gradient-text">Edit Task</h3>
+      <button id="editCancel" class="text-gray-500 hover:text-white text-2xl leading-none">&times;</button>
+    </div>
+    <form id="editForm" class="space-y-3">
+      <input type="hidden" id="eId">
+      <label class="block text-[11px] uppercase tracking-widest text-gray-500">Title
+        <input id="eTitle" class="field w-full mt-1" required maxlength="200">
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block text-[11px] uppercase tracking-widest text-gray-500">Priority
+          <select id="ePriority" class="field w-full mt-1">
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label class="block text-[11px] uppercase tracking-widest text-gray-500">Due date
+          <input id="eDue" type="date" class="field w-full mt-1">
+        </label>
+      </div>
+      <label class="block text-[11px] uppercase tracking-widest text-gray-500">Category
+        <input id="eCategory" class="field w-full mt-1" maxlength="40" placeholder="e.g. Sales, Ops, Personal">
+      </label>
+      <label class="block text-[11px] uppercase tracking-widest text-gray-500">Notes
+        <textarea id="eNotes" class="field w-full mt-1" rows="3" maxlength="800"></textarea>
+      </label>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="editCancel2" class="btn btn-ghost px-4 py-2 rounded-md">Cancel</button>
+        <button type="submit" class="btn btn-primary px-4 py-2 rounded-md">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const STORE_KEY = 'dca_tasks_v1';
 let tasks = [];
@@ -296,21 +334,32 @@ function del(id){
   save(); render();
 }
 
-function edit(id){
+function openEdit(id){
   const t = tasks.find(x => x.id===id);
   if(!t) return;
-  const newTitle = prompt('Task title:', t.title);
-  if(newTitle === null) return;
-  t.title = newTitle.trim() || t.title;
-  const newPrio = prompt('Priority (high / medium / low):', t.priority);
-  if(newPrio && ['high','medium','low'].includes(newPrio.trim().toLowerCase())) t.priority = newPrio.trim().toLowerCase();
-  const newCat = prompt('Category (optional):', t.category || '');
-  if(newCat !== null) t.category = newCat.trim();
-  const newDue = prompt('Due date YYYY-MM-DD (blank to clear):', t.due || '');
-  if(newDue !== null) t.due = newDue.trim();
-  const newNotes = prompt('Notes (optional):', t.notes || '');
-  if(newNotes !== null) t.notes = newNotes.trim();
-  save(); render();
+  document.getElementById('eId').value       = t.id;
+  document.getElementById('eTitle').value    = t.title || '';
+  document.getElementById('ePriority').value = t.priority || 'medium';
+  document.getElementById('eCategory').value = t.category || '';
+  document.getElementById('eDue').value      = t.due || '';
+  document.getElementById('eNotes').value    = t.notes || '';
+  document.getElementById('editModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('eTitle').focus(), 50);
+}
+function closeEdit(){
+  document.getElementById('editModal').classList.add('hidden');
+}
+function saveEdit(e){
+  e.preventDefault();
+  const id = document.getElementById('eId').value;
+  const t = tasks.find(x => x.id===id);
+  if(!t) return closeEdit();
+  t.title    = document.getElementById('eTitle').value.trim() || t.title;
+  t.priority = document.getElementById('ePriority').value;
+  t.category = document.getElementById('eCategory').value.trim();
+  t.due      = document.getElementById('eDue').value || '';
+  t.notes    = document.getElementById('eNotes').value.trim();
+  save(); render(); closeEdit();
 }
 
 function clearDone(){
@@ -371,7 +420,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = el.dataset.id, act = el.dataset.act;
     if(act==='toggle') toggle(id);
     else if(act==='del') del(id);
-    else if(act==='edit') edit(id);
+    else if(act==='edit') openEdit(id);
+  });
+
+  document.getElementById('editForm').addEventListener('submit', saveEdit);
+  document.getElementById('editCancel').addEventListener('click', closeEdit);
+  document.getElementById('editCancel2').addEventListener('click', closeEdit);
+  document.getElementById('editModal').addEventListener('click', e => {
+    if(e.target.id === 'editModal') closeEdit();
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && !document.getElementById('editModal').classList.contains('hidden')) closeEdit();
   });
 
   document.getElementById('exportBtn').addEventListener('click', exportJson);
