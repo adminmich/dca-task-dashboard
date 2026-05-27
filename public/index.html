@@ -45,6 +45,13 @@
     .btn-ghost:hover { background:rgba(30,41,59,.9); color:white; }
     .overdue-dot { color:#f87171; }
     .due-today-dot { color:#fbbf24; }
+    .alert-overdue { background:linear-gradient(135deg, rgba(248,113,113,.12), rgba(225,29,72,.06)); border:1px solid rgba(248,113,113,.35); box-shadow:0 0 25px rgba(248,113,113,.08); }
+    .alert-soon    { background:linear-gradient(135deg, rgba(251,191,36,.10), rgba(245,158,11,.05)); border:1px solid rgba(251,191,36,.30); box-shadow:0 0 25px rgba(251,191,36,.06); }
+    .alert-pulse { animation:alertPulse 2.4s ease-in-out infinite; }
+    @keyframes alertPulse { 0%,100%{ box-shadow:0 0 25px rgba(248,113,113,.08) } 50%{ box-shadow:0 0 35px rgba(248,113,113,.22) } }
+    .alert-row { transition:background .15s; cursor:pointer; }
+    .alert-row:hover { background:rgba(255,255,255,.04); }
+    .badge-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:.05em; }
   </style>
 </head>
 <body class="text-gray-100 min-h-screen">
@@ -60,6 +67,10 @@
       </div>
     </div>
     <div class="flex items-center gap-6 text-xs">
+      <button id="navBell" class="relative text-gray-400 hover:text-amber-300 transition" title="Jump to alerts" style="display:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span id="navBellCount" class="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-bold rounded-full px-1.5 py-[1px] min-w-[16px] text-center">0</span>
+      </button>
       <span class="flex items-center gap-1.5 text-gray-500"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>Synced</span>
       <span class="text-gray-600" id="dateNow"></span>
     </div>
@@ -81,6 +92,9 @@
       <button id="clearDoneBtn" class="btn btn-ghost px-3 py-1.5 rounded-md text-rose-300">Clear Completed</button>
     </div>
   </header>
+
+  <!-- ALERTS -->
+  <section id="alertsWrap" class="space-y-3"></section>
 
   <!-- KPI ROW -->
   <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -210,6 +224,16 @@ function dueState(s){
   if(s === t) return 'today';
   return 'future';
 }
+function tomorrowStr(){
+  const d = new Date(); d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+function daysUntil(s){
+  if(!s) return Infinity;
+  const a = new Date(s+'T00:00:00');
+  const b = new Date(todayStr()+'T00:00:00');
+  return Math.round((a-b)/86400000);
+}
 function priorityWeight(p){ return p==='high'?0 : p==='medium'?1 : 2; }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -219,6 +243,94 @@ function refreshKPIs(){
   document.getElementById('kpiDueToday').textContent = pend.filter(t => dueState(t.due)==='today').length;
   document.getElementById('kpiOverdue').textContent  = pend.filter(t => dueState(t.due)==='overdue').length;
   document.getElementById('kpiDone').textContent     = tasks.filter(t => t.done).length;
+}
+
+/* ----------------------------- Alerts ----------------------------- */
+function computeAlerts(){
+  const pend = tasks.filter(t => !t.done && t.due);
+  const overdue = pend.filter(t => dueState(t.due)==='overdue')
+                      .sort((a,b) => a.due.localeCompare(b.due));
+  const dueSoon = pend.filter(t => { const d = daysUntil(t.due); return d===0 || d===1; })
+                      .sort((a,b) => a.due.localeCompare(b.due));
+  return { overdue, dueSoon };
+}
+
+function alertRowHtml(t, kind){
+  const d = daysUntil(t.due);
+  let label;
+  if(d < 0)      label = `${Math.abs(d)} day${Math.abs(d)===1?'':'s'} overdue`;
+  else if(d===0) label = 'Due today';
+  else if(d===1) label = 'Due tomorrow';
+  else           label = fmtDate(t.due);
+  const cat = t.category ? `<span class="text-[10px] uppercase tracking-wider text-brand-300">${escapeHtml(t.category)}</span>` : '';
+  const prio = t.priority || 'medium';
+  return `
+    <div class="alert-row flex items-center gap-3 px-3 py-2 rounded-lg" data-id="${t.id}">
+      <div class="checkbox" data-act="toggle" data-id="${t.id}" title="Mark complete"></div>
+      <div class="flex-1 min-w-0" data-act="edit" data-id="${t.id}">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-medium text-[13px] truncate">${escapeHtml(t.title)}</span>
+          <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded priority-${prio}">${prio}</span>
+          ${cat}
+        </div>
+      </div>
+      <span class="badge-pill ${kind==='overdue'?'bg-rose-500/20 text-rose-200':'bg-amber-500/20 text-amber-200'} whitespace-nowrap">${label}</span>
+    </div>`;
+}
+
+function renderAlerts(){
+  const { overdue, dueSoon } = computeAlerts();
+  const wrap = document.getElementById('alertsWrap');
+  const totalCount = overdue.length + dueSoon.length;
+
+  // Title badge
+  const baseTitle = 'DCA Task Dashboard';
+  document.title = totalCount > 0 ? `(${totalCount}) ${baseTitle}` : baseTitle;
+
+  // Nav bell
+  const bell = document.getElementById('navBell');
+  const bellCount = document.getElementById('navBellCount');
+  if(totalCount > 0){
+    bell.style.display = '';
+    bellCount.textContent = totalCount;
+    bellCount.classList.toggle('bg-rose-500',  overdue.length > 0);
+    bellCount.classList.toggle('bg-amber-500', overdue.length === 0);
+  } else {
+    bell.style.display = 'none';
+  }
+
+  if(totalCount === 0){ wrap.innerHTML = ''; return; }
+
+  let html = '';
+  if(overdue.length > 0){
+    html += `
+    <div class="alert-overdue ${overdue.length>0?'alert-pulse':''} rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-rose-300 text-lg">⚠</span>
+          <h3 class="text-sm font-bold text-rose-200">${overdue.length} Overdue Task${overdue.length===1?'':'s'}</h3>
+          <span class="text-[11px] text-rose-300/60">— action required</span>
+        </div>
+        <button class="text-[11px] text-rose-200 hover:text-white" data-jump-filter="overdue">View all →</button>
+      </div>
+      <div class="space-y-1">${overdue.map(t => alertRowHtml(t,'overdue')).join('')}</div>
+    </div>`;
+  }
+  if(dueSoon.length > 0){
+    html += `
+    <div class="alert-soon rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-300 text-lg">⏰</span>
+          <h3 class="text-sm font-bold text-amber-200">${dueSoon.length} Task${dueSoon.length===1?'':'s'} Due Soon</h3>
+          <span class="text-[11px] text-amber-300/60">— due today or tomorrow</span>
+        </div>
+        <button class="text-[11px] text-amber-200 hover:text-white" data-jump-filter="today">View today →</button>
+      </div>
+      <div class="space-y-1">${dueSoon.map(t => alertRowHtml(t,'soon')).join('')}</div>
+    </div>`;
+  }
+  wrap.innerHTML = html;
 }
 
 function applyFilters(list){
@@ -258,6 +370,7 @@ function applyFilters(list){
 
 function render(){
   refreshKPIs();
+  renderAlerts();
   const list = applyFilters(tasks);
   const wrap = document.getElementById('taskList');
   if(list.length === 0){
@@ -422,6 +535,28 @@ document.addEventListener('DOMContentLoaded', () => {
     else if(act==='del') del(id);
     else if(act==='edit') openEdit(id);
   });
+
+  document.getElementById('alertsWrap').addEventListener('click', e => {
+    const jump = e.target.closest('[data-jump-filter]');
+    if(jump){
+      const f = jump.dataset.jumpFilter;
+      const btn = document.querySelector(`.tab-btn[data-filter="${f}"]`);
+      if(btn) btn.click();
+      return;
+    }
+    const el = e.target.closest('[data-act]');
+    if(!el) return;
+    e.stopPropagation();
+    const id = el.dataset.id, act = el.dataset.act;
+    if(act==='toggle') toggle(id);
+    else if(act==='edit') openEdit(id);
+  });
+
+  document.getElementById('navBell').addEventListener('click', () => {
+    document.getElementById('alertsWrap').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  setInterval(render, 60000);
 
   document.getElementById('editForm').addEventListener('submit', saveEdit);
   document.getElementById('editCancel').addEventListener('click', closeEdit);
