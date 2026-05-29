@@ -228,6 +228,32 @@
       </div>
       <p class="text-[11px] text-gray-600 pt-3">List is maintained manually. To update, edit the source <a href="https://docs.google.com/spreadsheets/d/13uB07PHAoj_hUXbNh79czWeFk0tzSBwHX68DGv_OtY8/edit" target="_blank" rel="noopener" class="text-brand-400 hover:underline">Google Sheet</a>, then update <code class="text-gray-500">public/index.html</code> in the repo.</p>
     </section>
+
+    <!-- DCA COURSE MEMBERS (SINCE FEB 2026) -->
+    <header class="flex flex-wrap items-end justify-between gap-4 pt-2">
+      <div>
+        <h3 class="text-lg font-bold text-gray-200">DCA Course Members <span class="text-gray-500 text-sm font-normal">— since February 2026</span></h3>
+        <p class="text-xs text-gray-500 mt-1">Recent signups for the <strong>Defi Consulting Alliance</strong> WHOP product.</p>
+      </div>
+      <span class="text-xs text-gray-500"><span id="dcaCount" class="text-brand-400 font-semibold">0</span> unique members</span>
+    </header>
+    <section class="glass rounded-xl p-4">
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 text-[11px] border-b border-surface-border">
+              <th class="pb-2 pr-3 w-8">#</th>
+              <th class="pb-2 pr-3">Name</th>
+              <th class="pb-2 pr-3">Email</th>
+              <th class="pb-2 pr-3">Joined</th>
+              <th class="pb-2 pr-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="dcaTable"></tbody>
+        </table>
+      </div>
+      <p class="text-[11px] text-gray-600 pt-3">Source: WHOP API (Defi Consulting Alliance product, joined on or after 2026-02-01). Snapshot — update via repo to refresh.</p>
+    </section>
   </div><!-- /paneMastermind -->
 
 </main>
@@ -652,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedBtn = document.getElementById(savedPane === 'mastermind' ? 'paneTabMastermind' : 'paneTabTasks');
   setPane(savedPane, savedBtn);
   renderMastermind();
+  renderDcaCourse();
 });
 
 // ── TOP-LEVEL TABS ──
@@ -715,6 +742,36 @@ function renderMastermind() {
   document.getElementById('mmPackage').textContent = fmtMoney(totalPkg);
   document.getElementById('mmPaid').textContent = fmtMoney(totalPaid);
   document.getElementById('mmBalance').textContent = fmtMoney(totalBalance);
+}
+
+// ── DCA COURSE MEMBERS (since Feb 2026, from WHOP "Defi Consulting Alliance" product) ──
+const DCA_COURSE_MEMBERS = [
+  { name:'Jade Frehner',   email:'jadefrehner@gmail.com',                 joined:'2026-02-19', status:'drafted'   },
+  { name:'Roger',          email:'taliulu.roger@gmail.com',               joined:'2026-03-12', status:'completed' },
+  { name:'blankdespair',   email:'marinacrichton@icloud.com',             joined:'2026-03-29', status:'completed' },
+  { name:'helicop0f',      email:'helicop77@gmail.com',                   joined:'2026-03-30', status:'completed' },
+  { name:'Bridget Good',   email:'bridget@goodmedia.co.za',               joined:'2026-04-07', status:'drafted'   },
+  { name:'kevinjhff',      email:'kevinjh1061@gmail.com',                 joined:'2026-04-08', status:'completed' },
+  { name:'autreyba',       email:'autreyba49@gmail.com',                  joined:'2026-04-09', status:'completed' },
+  { name:'Michael Smith',  email:'michael.smith@childrenscolorado.org',   joined:'2026-04-23', status:'drafted'   },
+  { name:'johall81',       email:'johall2009@gmail.com',                  joined:'2026-04-30', status:'completed' },
+];
+
+function renderDcaCourse() {
+  const tbody = document.getElementById('dcaTable');
+  if (!tbody) return;
+  tbody.innerHTML = DCA_COURSE_MEMBERS.map((m, i) => {
+    const badgeClass = m.status === 'completed' ? 'priority-low' : 'priority-medium';
+    const badgeLabel = m.status === 'completed' ? 'Completed' : m.status.charAt(0).toUpperCase() + m.status.slice(1);
+    return `<tr class="task-row border-b border-surface-border/40">
+      <td class="py-2.5 pr-3 text-gray-500">${i+1}</td>
+      <td class="py-2.5 pr-3 font-medium">${m.name || '<span class="text-gray-600">(no name)</span>'}</td>
+      <td class="py-2.5 pr-3"><a href="mailto:${m.email}" class="text-brand-400 hover:underline text-[12px]">${m.email}</a></td>
+      <td class="py-2.5 pr-3 text-gray-300 text-[12px]">${m.joined}</td>
+      <td class="py-2.5 pr-3"><span class="badge-pill ${badgeClass}">${badgeLabel}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('dcaCount').textContent = DCA_COURSE_MEMBERS.length;
 }
 </script>
 </body>
