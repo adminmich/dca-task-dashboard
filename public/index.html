@@ -23,6 +23,7 @@
     .gradient-text { background:linear-gradient(135deg,#38bdf8,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
     ::-webkit-scrollbar { width:5px } ::-webkit-scrollbar-track { background:#111827 } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px }
     .tab-btn { transition:all .2s; } .tab-btn.active { background:rgba(14,165,233,.15); color:#38bdf8; border-color:rgba(14,165,233,.4); }
+    .pane-tab { color:#9ca3af; } .pane-tab:hover { color:#e5e7eb; } .pane-tab.active { background:rgba(14,165,233,.15); color:#38bdf8; }
     .kpi-card { transition:all .2s ease; }
     .kpi-card:hover { transform:translateY(-2px); border-color:rgba(56,189,248,.3); }
     .task-row { transition:all .15s ease; }
@@ -78,6 +79,15 @@
 </nav>
 
 <main class="max-w-[1440px] mx-auto px-6 py-6 space-y-6">
+
+  <!-- TOP-LEVEL TABS -->
+  <div class="flex items-center gap-2 border-b border-surface-border pb-2">
+    <button id="paneTabTasks" class="pane-tab active px-4 py-1.5 text-sm font-medium rounded-md transition" onclick="setPane('tasks', this)">Tasks</button>
+    <button id="paneTabMastermind" class="pane-tab px-4 py-1.5 text-sm font-medium rounded-md transition text-gray-400" onclick="setPane('mastermind', this)">Mastermind Members</button>
+  </div>
+
+  <!-- ── PANE: TASKS ── -->
+  <div id="paneTasks" class="space-y-6">
 
   <!-- HEADER -->
   <header class="flex flex-wrap items-end justify-between gap-4">
@@ -158,6 +168,66 @@
   <section id="taskList" class="space-y-2"></section>
 
   <p class="text-center text-[11px] text-gray-600 pt-4">Tasks are saved locally in this browser via <code class="text-gray-500">localStorage</code>. Use Export/Import to back up or move between devices.</p>
+
+  </div><!-- /paneTasks -->
+
+  <!-- ── PANE: MASTERMIND MEMBERS ── -->
+  <div id="paneMastermind" class="hidden space-y-6">
+    <header class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-bold gradient-text">Mastermind Members</h2>
+        <p class="text-xs text-gray-500 mt-1">Mastermind client roster with payment status.</p>
+      </div>
+      <div class="text-[11px] text-gray-500">
+        Source: <a href="https://docs.google.com/spreadsheets/d/13uB07PHAoj_hUXbNh79czWeFk0tzSBwHX68DGv_OtY8/edit" target="_blank" rel="noopener" class="text-brand-400 hover:underline">Mastermind List (Google Sheet)</a>
+      </div>
+    </header>
+
+    <!-- SUMMARY KPI ROW -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="kpi-card glass rounded-xl p-4">
+        <div class="text-[10px] uppercase tracking-widest text-gray-500">Members</div>
+        <div class="text-3xl font-bold mt-2" id="mmCount">0</div>
+        <div class="text-[10px] text-gray-600 mt-1">Active mastermind clients</div>
+      </div>
+      <div class="kpi-card glass rounded-xl p-4">
+        <div class="text-[10px] uppercase tracking-widest text-gray-500">Total Package Value</div>
+        <div class="text-3xl font-bold mt-2 text-brand-400" id="mmPackage">$0</div>
+        <div class="text-[10px] text-gray-600 mt-1">Sum of contracted packages</div>
+      </div>
+      <div class="kpi-card glass rounded-xl p-4">
+        <div class="text-[10px] uppercase tracking-widest text-gray-500">Total Collected</div>
+        <div class="text-3xl font-bold mt-2 text-emerald-300" id="mmPaid">$0</div>
+        <div class="text-[10px] text-gray-600 mt-1">Sum of payments received</div>
+      </div>
+      <div class="kpi-card glass rounded-xl p-4">
+        <div class="text-[10px] uppercase tracking-widest text-gray-500">Outstanding Balance</div>
+        <div class="text-3xl font-bold mt-2 text-rose-400" id="mmBalance">$0</div>
+        <div class="text-[10px] text-gray-600 mt-1">Amount still owed</div>
+      </div>
+    </section>
+
+    <!-- MEMBERS TABLE -->
+    <section class="glass rounded-xl p-4">
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 text-[11px] border-b border-surface-border">
+              <th class="pb-2 pr-3 w-8">#</th>
+              <th class="pb-2 pr-3">Client</th>
+              <th class="pb-2 pr-3 text-right">Package</th>
+              <th class="pb-2 pr-3 text-right">Paid</th>
+              <th class="pb-2 pr-3 text-right">Balance</th>
+              <th class="pb-2 pr-3">Status</th>
+              <th class="pb-2 pr-3">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="mmTable"></tbody>
+        </table>
+      </div>
+      <p class="text-[11px] text-gray-600 pt-3">List is maintained manually. To update, edit the source <a href="https://docs.google.com/spreadsheets/d/13uB07PHAoj_hUXbNh79czWeFk0tzSBwHX68DGv_OtY8/edit" target="_blank" rel="noopener" class="text-brand-400 hover:underline">Google Sheet</a>, then update <code class="text-gray-500">public/index.html</code> in the repo.</p>
+    </section>
+  </div><!-- /paneMastermind -->
 
 </main>
 
@@ -575,7 +645,72 @@ document.addEventListener('DOMContentLoaded', () => {
     if(e.target.files[0]) importJson(e.target.files[0]);
     e.target.value = '';
   });
+
+  // Restore last-active pane (Tasks default)
+  const savedPane = localStorage.getItem('dca_pane_v1') || 'tasks';
+  const savedBtn = document.getElementById(savedPane === 'mastermind' ? 'paneTabMastermind' : 'paneTabTasks');
+  setPane(savedPane, savedBtn);
+  renderMastermind();
 });
+
+// ── TOP-LEVEL TABS ──
+function setPane(name, btn) {
+  document.getElementById('paneTasks').classList.toggle('hidden', name !== 'tasks');
+  document.getElementById('paneMastermind').classList.toggle('hidden', name !== 'mastermind');
+  document.querySelectorAll('.pane-tab').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('text-gray-400');
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.classList.remove('text-gray-400');
+  }
+  localStorage.setItem('dca_pane_v1', name);
+}
+
+// ── MASTERMIND MEMBERS ──
+// Mirrors the canonical "Mastermind List" Google Sheet. Update both when the sheet changes.
+const MASTERMIND_MEMBERS = [
+  { name:'Mary Johnston',  package:18000, paid:18000, notes:'Paid in full via WHOP.',                          status:'paid'   },
+  { name:'Zachary Lollis', package:18000, paid:1497,  notes:'WHOP $997 subscription — collecting against balance.', status:'paying' },
+  { name:'Charles Yoon',   package:18000, paid:16000, notes:'Accelerator price waived as part of the signup deal.', status:'paying' },
+  { name:'Arnold Tyler',   package:18000, paid:500,   notes:'Emailed for WHOP subscription setup.',           status:'paying' },
+  { name:'Gary Babb',      package:18000, paid:18000, notes:'Paid in full via Stripe.',                       status:'paid'   },
+  { name:'Aaron Knop',     package:35000, paid:31000, notes:'',                                                status:'paying' },
+  { name:'Donna Porteous', package:16000, paid:16000, notes:'Paid in full.',                                   status:'paid'   },
+];
+
+function fmtMoney(n) {
+  const sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function renderMastermind() {
+  const tbody = document.getElementById('mmTable');
+  if (!tbody) return;
+  let totalPkg = 0, totalPaid = 0;
+  tbody.innerHTML = MASTERMIND_MEMBERS.map((m, i) => {
+    const balance = m.paid - m.package; // negative = still owed
+    totalPkg += m.package; totalPaid += m.paid;
+    const badgeClass = m.status === 'paid' ? 'priority-low' : 'priority-medium';
+    const badgeLabel = m.status === 'paid' ? 'Paid' : 'Balance Due';
+    const balCls = balance < 0 ? 'text-rose-300' : 'text-emerald-300';
+    return `<tr class="task-row border-b border-surface-border/40">
+      <td class="py-2.5 pr-3 text-gray-500">${i+1}</td>
+      <td class="py-2.5 pr-3 font-medium">${m.name}</td>
+      <td class="py-2.5 pr-3 text-right">${fmtMoney(m.package)}</td>
+      <td class="py-2.5 pr-3 text-right text-emerald-300">${fmtMoney(m.paid)}</td>
+      <td class="py-2.5 pr-3 text-right ${balCls}">${fmtMoney(balance)}</td>
+      <td class="py-2.5 pr-3"><span class="badge-pill ${badgeClass}">${badgeLabel}</span></td>
+      <td class="py-2.5 pr-3 text-gray-400 text-[12px]">${m.notes || '—'}</td>
+    </tr>`;
+  }).join('');
+  const totalBalance = totalPaid - totalPkg;
+  document.getElementById('mmCount').textContent = MASTERMIND_MEMBERS.length;
+  document.getElementById('mmPackage').textContent = fmtMoney(totalPkg);
+  document.getElementById('mmPaid').textContent = fmtMoney(totalPaid);
+  document.getElementById('mmBalance').textContent = fmtMoney(totalBalance);
+}
 </script>
 </body>
 </html>
