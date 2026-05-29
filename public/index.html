@@ -215,6 +215,7 @@
             <tr class="text-left text-gray-500 text-[11px] border-b border-surface-border">
               <th class="pb-2 pr-3 w-8">#</th>
               <th class="pb-2 pr-3">Client</th>
+              <th class="pb-2 pr-3">Email</th>
               <th class="pb-2 pr-3 text-right">Package</th>
               <th class="pb-2 pr-3 text-right">Paid</th>
               <th class="pb-2 pr-3 text-right">Balance</th>
@@ -671,13 +672,13 @@ function setPane(name, btn) {
 // ── MASTERMIND MEMBERS ──
 // Mirrors the canonical "Mastermind List" Google Sheet. Update both when the sheet changes.
 const MASTERMIND_MEMBERS = [
-  { name:'Mary Johnston',  package:18000, paid:18000, notes:'Paid in full via WHOP.',                          status:'paid'   },
-  { name:'Zachary Lollis', package:18000, paid:1497,  notes:'WHOP $997 subscription — collecting against balance.', status:'paying' },
-  { name:'Charles Yoon',   package:18000, paid:16000, notes:'Accelerator price waived as part of the signup deal.', status:'paying' },
-  { name:'Arnold Tyler',   package:18000, paid:500,   notes:'Emailed for WHOP subscription setup.',           status:'paying' },
-  { name:'Gary Babb',      package:18000, paid:18000, notes:'Paid in full via Stripe.',                       status:'paid'   },
-  { name:'Aaron Knop',     package:35000, paid:31000, notes:'',                                                status:'paying' },
-  { name:'Donna Porteous', package:16000, paid:16000, notes:'Paid in full.',                                   status:'paid'   },
+  { name:'Mary Johnston',  email:'brcsmom3@gmail.com',           package:18000, paid:18000, notes:'Paid in full via WHOP.',                          status:'paid'   },
+  { name:'Zachary Lollis', email:'zjlollis@gmail.com',           package:18000, paid:1497,  notes:'WHOP $997 subscription — collecting against balance.', status:'paying' },
+  { name:'Charles Yoon',   email:'cyoon29@gmail.com',            package:18000, paid:16000, notes:'Accelerator price waived as part of the signup deal.', status:'paying' },
+  { name:'Arnold Tyler',   email:'atstockinfo@yahoo.com',        package:18000, paid:500,   notes:'Emailed for WHOP subscription setup.',           status:'paying' },
+  { name:'Gary Babb',      email:'gbabb@martinonesource.com',    package:18000, paid:18000, notes:'Paid in full via Stripe.',                       status:'paid'   },
+  { name:'Aaron Knop',     email:'aaroncknop@gmail.com',         package:35000, paid:31000, notes:'',                                                status:'paying' },
+  { name:'Donna Porteous', email:'donna@grantporteous.com',      package:16000, paid:16000, notes:'Paid in full.',                                   status:'paid'   },
 ];
 
 function fmtMoney(n) {
@@ -695,9 +696,13 @@ function renderMastermind() {
     const badgeClass = m.status === 'paid' ? 'priority-low' : 'priority-medium';
     const badgeLabel = m.status === 'paid' ? 'Paid' : 'Balance Due';
     const balCls = balance < 0 ? 'text-rose-300' : 'text-emerald-300';
+    const emailCell = m.email
+      ? `<a href="mailto:${m.email}" class="text-brand-400 hover:underline text-[12px]">${m.email}</a>`
+      : `<span class="text-gray-600 text-[12px]">—</span>`;
     return `<tr class="task-row border-b border-surface-border/40">
       <td class="py-2.5 pr-3 text-gray-500">${i+1}</td>
       <td class="py-2.5 pr-3 font-medium">${m.name}</td>
+      <td class="py-2.5 pr-3">${emailCell}</td>
       <td class="py-2.5 pr-3 text-right">${fmtMoney(m.package)}</td>
       <td class="py-2.5 pr-3 text-right text-emerald-300">${fmtMoney(m.paid)}</td>
       <td class="py-2.5 pr-3 text-right ${balCls}">${fmtMoney(balance)}</td>
